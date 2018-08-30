@@ -178,13 +178,19 @@ func trackFace(frame gocv.Mat) {
 	}
 
 	// Turn the car steering left or right based on whether the face image is to the left or right of center
-	
+
+	steering := 0.0
+
 	if center < W/2 {
-		setSteering(1.0)
+		steering = 1.0
 
 	} else {
-		setSteering(-1.0)
+		steering = -1.0
+
 	}
+	setSteering(steering)
+
+	fmt.Printf("steering: %v, face center: %v, frame center: %v, left: %v, right: %v", steering, center, W/2, left, right)
 
 
 }
@@ -214,13 +220,13 @@ func getRightStick() pair {
 func setSteering(steering float64) {
 	steeringVal := getSteeringPulse(steering)
 	pca9685.SetPWM(1, 0, uint16(steeringVal))
-	fmt.Printf("setSteering to %v\n", steering)
+	// fmt.Printf("setSteering to %v\n", steering)
 }
 
 func setThrottle(throttle float64) {
 	throttleVal := getThrottlePulse(throttle)
 	pca9685.SetPWM(0, 0, uint16(throttleVal))
-	fmt.Printf("setThrottle to %v\n", throttle)
+	// fmt.Printf("setThrottle to %v\n", throttle)
 }
 
 
