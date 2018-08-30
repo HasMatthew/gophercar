@@ -237,7 +237,7 @@ func serveStream(webcam *gocv.VideoCapture) {
 	host := ":8080"
 
 	// create the mjpeg stream
-	stream = mjpeg.NewStream()
+	stream := mjpeg.NewStream()
 
 	// start capturing
 	go mjpegCapture(webcam, stream)
@@ -255,7 +255,7 @@ func mjpegCapture(webcam *gocv.VideoCapture, stream *mjpeg.Stream) {
 
 	for {
 		if ok := webcam.Read(&img); !ok {
-			fmt.Printf("Device closed: %v\n", deviceID)
+			fmt.Println("Device closed.")
 			return
 		}
 		if img.Empty() {
