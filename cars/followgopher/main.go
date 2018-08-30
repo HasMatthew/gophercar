@@ -184,10 +184,10 @@ func trackFace(frame gocv.Mat) {
 	steering := 0.0
 
 	if center < W/2 {
-		steering = 1.0
+		steering = 0.5
 
 	} else {
-		steering = -1.0
+		steering = -0.5
 
 	}
 	setSteering(steering)
