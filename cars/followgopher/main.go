@@ -245,7 +245,7 @@ func serveStream(webcam *gocv.VideoCapture) {
 	// start capturing
 	go mjpegCapture(webcam, stream)
 
-	fmt.Println("Capturing. Point your browser to " + host)
+	fmt.Printf("Capturing. Point your browser to %s\n", host)
 
 	// start http server
 	http.Handle("/", stream)
