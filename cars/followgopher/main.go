@@ -4,21 +4,17 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"io"
 	"math"
 	"os"
-	"os/exec"
-	"strconv"
 	"sync/atomic"
-	"time"
+
 	"gobot.io/x/gobot/drivers/i2c"
 
 	"gobot.io/x/gobot"
 	"gobot.io/x/gobot/platforms/dji/tello"
 	"gobot.io/x/gobot/platforms/joystick"
-	"gocv.io/x/gocv"
 	"gobot.io/x/gobot/platforms/raspi"
-	"github.com/fogleman/gg"
+	"gocv.io/x/gocv"
 )
 
 type pair struct {
@@ -33,19 +29,13 @@ const (
 	offset    = 32767.0
 )
 
-
-
 var (
-
+	r       *raspi.Adaptor
 	pca9685 *i2c.PCA9685Driver
 	oled    *i2c.SSD1306Driver
 	mpu6050 *i2c.MPU6050Driver
 
-	// ffmpeg command to decode video stream from drone
-	ffmpeg = exec.Command("ffmpeg", "-hwaccel", "auto", "-hwaccel_device", "opencl", "-i", "pipe:0",
-		"-pix_fmt", "bgr24", "-s", strconv.Itoa(frameX)+"x"+strconv.Itoa(frameY), "-f", "rawvideo", "pipe:1")
-	ffmpegIn, _  = ffmpeg.StdinPipe()
-	ffmpegOut, _ = ffmpeg.StdoutPipe()
+	// webcam   *gocv.VideoCapture
 
 	// gocv
 	window = gocv.NewWindow("Tello")
@@ -61,7 +51,6 @@ var (
 	left, top, right, bottom float64
 
 	// drone
-	drone      = tello.NewDriver("8890")
 	flightData *tello.FlightData
 
 	// joystick
@@ -76,45 +65,6 @@ func init() {
 	rightX.Store(float64(0.0))
 	rightY.Store(float64(0.0))
 
-	// process drone events in separate goroutine for concurrency
-	go func() {
-		// process joystick events
-		handleJoystick()
-
-		if err := ffmpeg.Start(); err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		drone.On(tello.FlightDataEvent, func(data interface{}) {
-			// TODO: protect flight data from race condition
-			flightData = data.(*tello.FlightData)
-		})
-
-		drone.On(tello.ConnectedEvent, func(data interface{}) {
-			fmt.Println("Connected")
-			drone.StartVideo()
-			drone.SetVideoEncoderRate(tello.VideoBitRateAuto)
-			drone.SetExposure(0)
-			gobot.Every(100*time.Millisecond, func() {
-				drone.StartVideo()
-			})
-		})
-
-		drone.On(tello.VideoFrameEvent, func(data interface{}) {
-			pkt := data.([]byte)
-			if _, err := ffmpegIn.Write(pkt); err != nil {
-				fmt.Println(err)
-			}
-		})
-
-		robot := gobot.NewRobot("tello",
-			[]gobot.Connection{joyAdaptor},
-			[]gobot.Device{drone, stick},
-		)
-
-		robot.Start()
-	}()
 }
 
 func main() {
@@ -122,6 +72,26 @@ func main() {
 		fmt.Println("How to run:\ngo run facetracker.go [model] [config] ([backend] [device])")
 		return
 	}
+
+	r = raspi.NewAdaptor()
+	pca9685 = i2c.NewPCA9685Driver(r)
+	oled = i2c.NewSSD1306Driver(r)
+	mpu6050 = i2c.NewMPU6050Driver(r)
+
+	robot := gobot.NewRobot("gophercar",
+		[]gobot.Connection{r},
+		[]gobot.Device{pca9685, oled, mpu6050},
+	)
+
+	robot.Start()
+
+	// open webcam
+	webcam, err := gocv.OpenVideoCapture(0)
+	if err != nil {
+		fmt.Printf("Error opening capture device: %v\n", 0)
+		return
+	}
+	defer webcam.Close()
 
 	model := os.Args[1]
 	config := os.Args[2]
@@ -145,14 +115,16 @@ func main() {
 	net.SetPreferableBackend(gocv.NetBackendType(backend))
 	net.SetPreferableTarget(gocv.NetTargetType(target))
 
+	img := gocv.NewMat()
+
 	for {
 		// get next frame from stream
-		buf := make([]byte, frameSize)
-		if _, err := io.ReadFull(ffmpegOut, buf); err != nil {
-			fmt.Println(err)
-			continue
+
+		if ok := webcam.Read(&img); !ok {
+			fmt.Printf("Device closed: %v\n", 0)
+			return
 		}
-		img, _ := gocv.NewMatFromBytes(frameY, frameX, gocv.MatTypeCV8UC3, buf)
+
 		if img.Empty() {
 			continue
 		}
@@ -181,7 +153,6 @@ func trackFace(frame *gocv.Mat) {
 	detections := gocv.GetBlobChannel(detBlob, 0, 0)
 	defer detections.Close()
 
-
 	for r := 0; r < detections.Rows(); r++ {
 
 		confidence := detections.GetFloatAt(r, 2)
@@ -205,10 +176,6 @@ func trackFace(frame *gocv.Mat) {
 
 	}
 
-	if !tracking {
-		return
-	}
-
 	if !detected {
 		setThrottle(0)
 	} else {
@@ -222,13 +189,12 @@ func trackFace(frame *gocv.Mat) {
 	// Turn the car steering left or right based on whether the face image is to the left or right of center
 	switch {
 	case right < W/2:
-		setSteering(1.0)  // TODO: use an offset based on the current steering
+		setSteering(1.0) // TODO: use an offset based on the current steering
 	case left > W/2:
-		setSteering(-1.0)  // TODO: use an offset based on the current steering
+		setSteering(-1.0) // TODO: use an offset based on the current steering
 	default:
 		setSteering(0.0)
 	}
-
 
 }
 
@@ -237,91 +203,7 @@ func dist(x1, y1, x2, y2 float64) float64 {
 }
 
 func handleJoystick() {
-	stick.On(joystick.CirclePress, func(data interface{}) {
-		drone.Forward(0)
-		drone.Up(0)
-		drone.Clockwise(0)
-		tracking = !tracking
-		if tracking {
-			detectSize = true
-			println("tracking")
-		} else {
-			detectSize = false
-			println("not tracking")
-		}
-	})
-	stick.On(joystick.SquarePress, func(data interface{}) {
-		fmt.Println("battery:", flightData.BatteryPercentage)
-	})
-	stick.On(joystick.TrianglePress, func(data interface{}) {
-		drone.ThrowTakeOff()
-		println("Takeoff")
-	})
-	stick.On(joystick.XPress, func(data interface{}) {
-		drone.PalmLand()
-		println("Land")
-	})
-	stick.On(joystick.LeftX, func(data interface{}) {
-		val := float64(data.(int16))
-		leftX.Store(val)
-	})
 
-	stick.On(joystick.LeftY, func(data interface{}) {
-		val := float64(data.(int16))
-		leftY.Store(val)
-	})
-
-	stick.On(joystick.RightX, func(data interface{}) {
-		val := float64(data.(int16))
-		rightX.Store(val)
-	})
-
-	stick.On(joystick.RightY, func(data interface{}) {
-		val := float64(data.(int16))
-		rightY.Store(val)
-	})
-	gobot.Every(50*time.Millisecond, func() {
-		rightStick := getRightStick()
-
-		switch {
-		case rightStick.y < -10:
-			drone.Forward(tello.ValidatePitch(rightStick.y, offset))
-		case rightStick.y > 10:
-			drone.Backward(tello.ValidatePitch(rightStick.y, offset))
-		default:
-			drone.Forward(0)
-		}
-
-		switch {
-		case rightStick.x > 10:
-			drone.Right(tello.ValidatePitch(rightStick.x, offset))
-		case rightStick.x < -10:
-			drone.Left(tello.ValidatePitch(rightStick.x, offset))
-		default:
-			drone.Right(0)
-		}
-	})
-
-	gobot.Every(50*time.Millisecond, func() {
-		leftStick := getLeftStick()
-		switch {
-		case leftStick.y < -10:
-			drone.Up(tello.ValidatePitch(leftStick.y, offset))
-		case leftStick.y > 10:
-			drone.Down(tello.ValidatePitch(leftStick.y, offset))
-		default:
-			drone.Up(0)
-		}
-
-		switch {
-		case leftStick.x > 20:
-			drone.Clockwise(tello.ValidatePitch(leftStick.x, offset))
-		case leftStick.x < -20:
-			drone.CounterClockwise(tello.ValidatePitch(leftStick.x, offset))
-		default:
-			drone.Clockwise(0)
-		}
-	})
 }
 
 func getLeftStick() pair {
@@ -364,4 +246,3 @@ func getThrottlePulse(val float64) int {
 	}
 	return int(gobot.Rescale(val, -1, 0, 490, 350))
 }
-
