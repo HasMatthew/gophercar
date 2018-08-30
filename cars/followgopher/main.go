@@ -94,9 +94,6 @@ func main() {
 	img := gocv.NewMat()
 	defer img.Close()
 
-	// color for the rect when faces detected
-	blue := color.RGBA{0, 0, 255, 0}
-
 	// load classifier to recognize faces
 	classifier = gocv.NewCascadeClassifier()
 	defer classifier.Close()
@@ -126,9 +123,15 @@ func main() {
 
 func trackFace(frame gocv.Mat) {
 	W := float64(frame.Cols())
-	H := float64(frame.Rows())
+	// H := float64(frame.Rows())
 	rects := classifier.DetectMultiScale(frame)
 	fmt.Printf("found %d faces\n", len(rects))
+
+	maxRect := struct {
+		left  float64
+		right float64
+		area  int
+	}{}
 
 	for _, r := range rects {
 		left = float64(r.Min.X)
@@ -144,9 +147,9 @@ func trackFace(frame gocv.Mat) {
 		detected = true
 
 		rect := image.Rect(int(left), int(top), int(right), int(bottom))
-		gocv.Rectangle(frame, rect, green, 3)
+		gocv.Rectangle(&frame, rect, green, 3)
 		s := rect.Size().X * rect.Size().Y
-		gocv.Rectangle(frame, rect, green, 3)
+		gocv.Rectangle(&frame, rect, green, 3)
 		if s > maxRect.area {
 			maxRect.area = s
 			maxRect.left = left
