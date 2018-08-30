@@ -93,7 +93,6 @@ func main() {
 	}
 	defer webcam.Close()
 
-
 	img := gocv.NewMat()
 	defer img.Close()
 
@@ -121,11 +120,6 @@ func main() {
 	// start http server
 	http.Handle("/", stream)
 	log.Fatal(http.ListenAndServe(host, nil))
-
-
-
-
-
 }
 
 func trackFace(frame gocv.Mat) {
@@ -236,22 +230,6 @@ func getThrottlePulse(val float64) int {
 		return int(gobot.Rescale(val, 0, 1, 350, 300))
 	}
 	return int(gobot.Rescale(val, -1, 0, 490, 350))
-}
-
-func serveStream(webcam *gocv.VideoCapture) {
-	//host := ":8080"
-	//
-	//// create the mjpeg stream
-	//stream := mjpeg.NewStream()
-	//
-	//// start capturing
-	//go mjpegCapture(webcam, stream)
-	//
-	//fmt.Printf("Capturing. Point your browser to %s\n", host)
-	//
-	//// start http server
-	//http.Handle("/", stream)
-	//log.Fatal(http.ListenAndServe(host, nil))
 }
 
 func mjpegCapture(webcam *gocv.VideoCapture, stream *mjpeg.Stream) {
