@@ -153,6 +153,12 @@ func trackFace(frame *gocv.Mat) {
 	detections := gocv.GetBlobChannel(detBlob, 0, 0)
 	defer detections.Close()
 
+	maxRect := struct {
+		left float64
+		right float64
+		area int
+	}{}
+
 	for r := 0; r < detections.Rows(); r++ {
 
 		confidence := detections.GetFloatAt(r, 2)
@@ -173,8 +179,17 @@ func trackFace(frame *gocv.Mat) {
 		detected = true
 		rect := image.Rect(int(left), int(top), int(right), int(bottom))
 		gocv.Rectangle(frame, rect, green, 3)
-
+		s := rect.Size().X * rect.Size().Y
+		gocv.Rectangle(frame, rect, green, 3)
+		if s > maxRect.area{
+			maxRect.area = s
+			maxRect.left = left
+			maxRect.right = right
+		}
 	}
+
+	left = maxRect.left
+	right = maxRect.right
 
 	if !detected {
 		setThrottle(0)
