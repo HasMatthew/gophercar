@@ -134,6 +134,8 @@ func trackFace(frame gocv.Mat) {
 		area  int
 	}{}
 
+	detected = false
+
 	for _, r := range rects {
 		left = float64(r.Min.X)
 		// top = float64(detections.GetFloatAt(r, 4)) * H
@@ -231,6 +233,7 @@ func getThrottlePulse(val float64) int {
 	}
 	return int(gobot.Rescale(val, -1, 0, 490, 350))
 }
+
 
 func mjpegCapture(webcam *gocv.VideoCapture, stream *mjpeg.Stream) {
 	img := gocv.NewMat()
