@@ -249,7 +249,7 @@ func getThrottlePulse(val float64) int {
 }
 
 func getThrottlePulseSlow() int {
-	return int(360) // 380
+	return int(420) // 380
 }
 
 func mjpegCapture(webcam *gocv.VideoCapture, stream *mjpeg.Stream) {
