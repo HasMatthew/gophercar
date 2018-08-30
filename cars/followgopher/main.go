@@ -38,9 +38,8 @@ var (
 	// webcam   *gocv.VideoCapture
 
 	// gocv
-	window = gocv.NewWindow("Tello")
-	net    *gocv.Net
-	green  = color.RGBA{0, 255, 0, 0}
+	net   *gocv.Net
+	green = color.RGBA{0, 255, 0, 0}
 
 	// tracking
 	tracking                 = false
@@ -131,10 +130,6 @@ func main() {
 
 		trackFace(&img)
 
-		window.IMShow(img)
-		if window.WaitKey(10) >= 0 {
-			break
-		}
 	}
 }
 
