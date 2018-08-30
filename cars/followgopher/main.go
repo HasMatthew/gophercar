@@ -173,7 +173,7 @@ func trackFace(frame gocv.Mat) {
 	//	setThrottle(-0.25)
 	//}
 
-	setThrottle(-0.1890014343699454)
+	setThrottle(-0.1990014343699454)
 
 	if !detected {
 		return
