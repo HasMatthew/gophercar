@@ -153,6 +153,7 @@ func setSteering(steering float64) {
 }
 
 func setThrottle(throttle float64) {
+	fmt.Printf("setThrottle: %v\n", throttle)
 	throttleVal := getThrottlePulse(throttle)
 	pca9685.SetPWM(0, 0, uint16(throttleVal))
 }
