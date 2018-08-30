@@ -164,7 +164,7 @@ func trackFace(frame gocv.Mat) {
 	//left = maxRect.left
 	//right = maxRect.right
 
-	center := (right - left) / 2.0
+	center := (right + left) / 2.0
 
 
 	//if !detected {
