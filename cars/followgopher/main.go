@@ -93,7 +93,6 @@ func main() {
 	}
 	defer webcam.Close()
 
-	// go serveStream(webcam)
 
 	img := gocv.NewMat()
 	defer img.Close()
@@ -109,21 +108,10 @@ func main() {
 		return
 	}
 
-	fmt.Printf("start reading camera device: %v\n", deviceID)
-	for {
-		// get next frame from stream
+	go serveStream(webcam)
 
-		if ok := webcam.Read(&img); !ok {
-			fmt.Printf("Device closed: %v\n", 0)
-			return
-		}
 
-		if img.Empty() {
-			continue
-		}
 
-		trackFace(img)
-	}
 }
 
 func trackFace(frame gocv.Mat) {
@@ -264,6 +252,8 @@ func mjpegCapture(webcam *gocv.VideoCapture, stream *mjpeg.Stream) {
 		if img.Empty() {
 			continue
 		}
+
+		trackFace(img)
 
 		buf, _ := gocv.IMEncode(".jpg", img)
 		stream.UpdateJPEG(buf)
