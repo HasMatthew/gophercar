@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/hybridgroup/mjpeg"
@@ -68,10 +69,8 @@ func init() {
 }
 
 func main() {
-	if len(os.Args) < 5 {
-		fmt.Println("How to run:\ngo run facetracker.go [model] [config] ([backend] [device])")
-		return
-	}
+	deviceID, _ := strconv.Atoi(os.Args[1])
+	xmlFile := os.Args[2]
 
 	r = raspi.NewAdaptor()
 	pca9685 = i2c.NewPCA9685Driver(r)
@@ -86,7 +85,6 @@ func main() {
 	robot.Start()
 
 	// open webcam
-	deviceID := 0
 	webcam, err := gocv.OpenVideoCapture(deviceID)
 	if err != nil {
 		fmt.Printf("Error opening capture device: %v\n", 0)
@@ -103,7 +101,6 @@ func main() {
 	classifier = gocv.NewCascadeClassifier()
 	defer classifier.Close()
 
-	xmlFile := `/home/pi/gophercar/cars/followgopher/haarcascade_frontalface_default.xml`
 	if !classifier.Load(xmlFile) {
 		fmt.Printf("Error reading cascade file: %v\n", xmlFile)
 		return
