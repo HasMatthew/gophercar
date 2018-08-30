@@ -164,7 +164,7 @@ func trackFace(frame gocv.Mat) {
 	right = maxRect.right
 
 	if !detected {
-		setThrottle(0)
+		setThrottle(350)
 	} else {
 		setThrottle(-0.25)
 	}
@@ -233,7 +233,6 @@ func getThrottlePulse(val float64) int {
 	}
 	return int(gobot.Rescale(val, -1, 0, 490, 350))
 }
-
 
 func mjpegCapture(webcam *gocv.VideoCapture, stream *mjpeg.Stream) {
 	img := gocv.NewMat()
