@@ -236,7 +236,7 @@ func getThrottlePulse(val float64) int {
 	return int(gobot.Rescale(val, -1, 0, 490, 350))
 }
 
-func serveStream(webcam *VideoCapture) {
+func serveStream(webcam *gocv.VideoCapture) {
 	host := ":8080"
 
 	// create the mjpeg stream
@@ -252,7 +252,7 @@ func serveStream(webcam *VideoCapture) {
 	log.Fatal(http.ListenAndServe(host, nil))
 }
 
-func mjpegCapture(webcam *VideoCapture, stream *mjpeg.Stream) {
+func mjpegCapture(webcam *gocv.VideoCapture, stream *mjpeg.Stream) {
 	img := gocv.NewMat()
 	defer img.Close()
 
