@@ -2,15 +2,13 @@ package main
 
 import (
 	"fmt"
-	"image"
 	"image/color"
 	"math"
 	"os"
 	"sync/atomic"
 
-	"gobot.io/x/gobot/drivers/i2c"
-
 	"gobot.io/x/gobot"
+	"gobot.io/x/gobot/drivers/i2c"
 	"gobot.io/x/gobot/platforms/dji/tello"
 	"gobot.io/x/gobot/platforms/joystick"
 	"gobot.io/x/gobot/platforms/raspi"
@@ -35,12 +33,8 @@ var (
 	oled    *i2c.SSD1306Driver
 	mpu6050 *i2c.MPU6050Driver
 
-	// webcam   *gocv.VideoCapture
-
 	// gocv
-	window = gocv.NewWindow("Tello")
-	net    *gocv.Net
-	green  = color.RGBA{0, 255, 0, 0}
+	green = color.RGBA{0, 255, 0, 0}
 
 	// tracking
 	tracking                 = false
@@ -57,6 +51,8 @@ var (
 	joyAdaptor                   = joystick.NewAdaptor()
 	stick                        = joystick.NewDriver(joyAdaptor, "dualshock4")
 	leftX, leftY, rightX, rightY atomic.Value
+
+	classifier gocv.CascadeClassifier
 )
 
 func init() {
@@ -86,37 +82,31 @@ func main() {
 	robot.Start()
 
 	// open webcam
-	webcam, err := gocv.OpenVideoCapture(0)
+	deviceID := 0
+	webcam, err := gocv.OpenVideoCapture(deviceID)
 	if err != nil {
 		fmt.Printf("Error opening capture device: %v\n", 0)
 		return
 	}
 	defer webcam.Close()
 
-	model := os.Args[1]
-	config := os.Args[2]
-	backend := gocv.NetBackendDefault
-	if len(os.Args) > 3 {
-		backend = gocv.ParseNetBackend(os.Args[3])
-	}
+	img := gocv.NewMat()
+	defer img.Close()
 
-	target := gocv.NetTargetCPU
-	if len(os.Args) > 4 {
-		target = gocv.ParseNetTarget(os.Args[4])
-	}
+	// color for the rect when faces detected
+	blue := color.RGBA{0, 0, 255, 0}
 
-	n := gocv.ReadNet(model, config)
-	if n.Empty() {
-		fmt.Printf("Error reading network model from : %v %v\n", model, config)
+	// load classifier to recognize faces
+	classifier = gocv.NewCascadeClassifier()
+	defer classifier.Close()
+
+	xmlFile := `/home/pi/gophercar/cars/followgopher/haarcascade_frontalface_default.xml`
+	if !classifier.Load(xmlFile) {
+		fmt.Printf("Error reading cascade file: %v\n", xmlFile)
 		return
 	}
-	net = &n
-	defer net.Close()
-	net.SetPreferableBackend(gocv.NetBackendType(backend))
-	net.SetPreferableTarget(gocv.NetTargetType(target))
 
-	img := gocv.NewMat()
-
+	fmt.Printf("start reading camera device: %v\n", deviceID)
 	for {
 		// get next frame from stream
 
@@ -129,50 +119,30 @@ func main() {
 			continue
 		}
 
-		trackFace(&img)
-
-		window.IMShow(img)
-		if window.WaitKey(10) >= 0 {
-			break
-		}
+		trackFace(img)
 	}
 }
 
-func trackFace(frame *gocv.Mat) {
+func trackFace(frame gocv.Mat) {
 	W := float64(frame.Cols())
 	H := float64(frame.Rows())
+	rects := classifier.DetectMultiScale(frame)
+	fmt.Printf("found %d faces\n", len(rects))
 
-	blob := gocv.BlobFromImage(*frame, 1.0, image.Pt(300, 300), gocv.NewScalar(104, 177, 123, 0), false, false)
-	defer blob.Close()
-
-	net.SetInput(blob, "data")
-
-	detBlob := net.Forward("detection_out")
-	defer detBlob.Close()
-
-	detections := gocv.GetBlobChannel(detBlob, 0, 0)
-	defer detections.Close()
-
-	for r := 0; r < detections.Rows(); r++ {
-
-		confidence := detections.GetFloatAt(r, 2)
-		if confidence < 0.5 {
-			continue
-		}
-
-		left = float64(detections.GetFloatAt(r, 3)) * W
-		top = float64(detections.GetFloatAt(r, 4)) * H
-		right = float64(detections.GetFloatAt(r, 5)) * W
-		bottom = float64(detections.GetFloatAt(r, 6)) * H
+	for _, r := range rects {
+		left = float64(r.Min.X)
+		// top = float64(detections.GetFloatAt(r, 4)) * H
+		right = float64(r.Max.X)
+		// bottom = float64(detections.GetFloatAt(r, 6)) * H
 
 		left = math.Min(math.Max(0.0, left), W-1.0)
 		right = math.Min(math.Max(0.0, right), W-1.0)
-		bottom = math.Min(math.Max(0.0, bottom), H-1.0)
-		top = math.Min(math.Max(0.0, top), H-1.0)
+		// bottom = math.Min(math.Max(0.0, bottom), H-1.0)
+		// top = math.Min(math.Max(0.0, top), H-1.0)
 
 		detected = true
-		rect := image.Rect(int(left), int(top), int(right), int(bottom))
-		gocv.Rectangle(frame, rect, green, 3)
+		// rect := image.Rect(int(left), int(top), int(right), int(bottom))
+		// gocv.Rectangle(frame, rect, green, 3)
 
 	}
 
