@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"log"
 	"math"
+	"net/http"
 	"os"
 	"sync/atomic"
 
+	"github.com/hybridgroup/mjpeg"
 	"gobot.io/x/gobot"
 	"gobot.io/x/gobot/drivers/i2c"
 	"gobot.io/x/gobot/platforms/dji/tello"
@@ -90,6 +93,8 @@ func main() {
 		return
 	}
 	defer webcam.Close()
+
+	go serveStream()
 
 	img := gocv.NewMat()
 	defer img.Close()
@@ -229,4 +234,38 @@ func getThrottlePulse(val float64) int {
 		return int(gobot.Rescale(val, 0, 1, 350, 300))
 	}
 	return int(gobot.Rescale(val, -1, 0, 490, 350))
+}
+
+func serveStream(webcam *VideoCapture) {
+	host := ":8080"
+
+	// create the mjpeg stream
+	stream = mjpeg.NewStream()
+
+	// start capturing
+	go mjpegCapture(webcam, stream)
+
+	fmt.Println("Capturing. Point your browser to " + host)
+
+	// start http server
+	http.Handle("/", stream)
+	log.Fatal(http.ListenAndServe(host, nil))
+}
+
+func mjpegCapture(webcam *VideoCapture, stream *mjpeg.Stream) {
+	img := gocv.NewMat()
+	defer img.Close()
+
+	for {
+		if ok := webcam.Read(&img); !ok {
+			fmt.Printf("Device closed: %v\n", deviceID)
+			return
+		}
+		if img.Empty() {
+			continue
+		}
+
+		buf, _ := gocv.IMEncode(".jpg", img)
+		stream.UpdateJPEG(buf)
+	}
 }
