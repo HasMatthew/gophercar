@@ -108,7 +108,21 @@ func main() {
 		return
 	}
 
-	go serveStream(webcam)
+	host := ":8080"
+
+	// create the mjpeg stream
+	stream := mjpeg.NewStream()
+
+	// start capturing
+	go mjpegCapture(webcam, stream)
+
+	fmt.Printf("Capturing. Point your browser to %s\n", host)
+
+	// start http server
+	http.Handle("/", stream)
+	log.Fatal(http.ListenAndServe(host, nil))
+
+
 
 
 
@@ -225,19 +239,19 @@ func getThrottlePulse(val float64) int {
 }
 
 func serveStream(webcam *gocv.VideoCapture) {
-	host := ":8080"
-
-	// create the mjpeg stream
-	stream := mjpeg.NewStream()
-
-	// start capturing
-	go mjpegCapture(webcam, stream)
-
-	fmt.Printf("Capturing. Point your browser to %s\n", host)
-
-	// start http server
-	http.Handle("/", stream)
-	log.Fatal(http.ListenAndServe(host, nil))
+	//host := ":8080"
+	//
+	//// create the mjpeg stream
+	//stream := mjpeg.NewStream()
+	//
+	//// start capturing
+	//go mjpegCapture(webcam, stream)
+	//
+	//fmt.Printf("Capturing. Point your browser to %s\n", host)
+	//
+	//// start http server
+	//http.Handle("/", stream)
+	//log.Fatal(http.ListenAndServe(host, nil))
 }
 
 func mjpegCapture(webcam *gocv.VideoCapture, stream *mjpeg.Stream) {
