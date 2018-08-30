@@ -11,11 +11,14 @@ import (
 	"strconv"
 	"sync/atomic"
 	"time"
+	"gobot.io/x/gobot/drivers/i2c"
 
 	"gobot.io/x/gobot"
 	"gobot.io/x/gobot/platforms/dji/tello"
 	"gobot.io/x/gobot/platforms/joystick"
 	"gocv.io/x/gocv"
+	"gobot.io/x/gobot/platforms/raspi"
+	"github.com/fogleman/gg"
 )
 
 type pair struct {
@@ -30,7 +33,14 @@ const (
 	offset    = 32767.0
 )
 
+
+
 var (
+
+	pca9685 *i2c.PCA9685Driver
+	oled    *i2c.SSD1306Driver
+	mpu6050 *i2c.MPU6050Driver
+
 	// ffmpeg command to decode video stream from drone
 	ffmpeg = exec.Command("ffmpeg", "-hwaccel", "auto", "-hwaccel_device", "opencl", "-i", "pipe:0",
 		"-pix_fmt", "bgr24", "-s", strconv.Itoa(frameX)+"x"+strconv.Itoa(frameY), "-f", "rawvideo", "pipe:1")
@@ -171,7 +181,9 @@ func trackFace(frame *gocv.Mat) {
 	detections := gocv.GetBlobChannel(detBlob, 0, 0)
 	defer detections.Close()
 
+
 	for r := 0; r < detections.Rows(); r++ {
+
 		confidence := detections.GetFloatAt(r, 2)
 		if confidence < 0.5 {
 			continue
@@ -190,48 +202,34 @@ func trackFace(frame *gocv.Mat) {
 		detected = true
 		rect := image.Rect(int(left), int(top), int(right), int(bottom))
 		gocv.Rectangle(frame, rect, green, 3)
+
 	}
 
-	if !tracking || !detected {
+	if !tracking {
 		return
 	}
 
-	if detectSize {
-		detectSize = false
-		refDistance = dist(left, top, right, bottom)
+	if !detected {
+		setThrottle(0)
+	} else {
+		setThrottle(-0.25)
 	}
 
-	distance := dist(left, top, right, bottom)
+	if !detected {
+		return
+	}
 
-	// x axis
+	// Turn the car steering left or right based on whether the face image is to the left or right of center
 	switch {
 	case right < W/2:
-		drone.CounterClockwise(50)
+		setSteering(1.0)  // TODO: use an offset based on the current steering
 	case left > W/2:
-		drone.Clockwise(50)
+		setSteering(-1.0)  // TODO: use an offset based on the current steering
 	default:
-		drone.Clockwise(0)
+		setSteering(0.0)
 	}
 
-	// y axis
-	switch {
-	case top < H/10:
-		drone.Up(25)
-	case bottom > H-H/10:
-		drone.Down(25)
-	default:
-		drone.Up(0)
-	}
 
-	// z axis
-	switch {
-	case distance < refDistance-distTolerance:
-		drone.Forward(20)
-	case distance > refDistance+distTolerance:
-		drone.Backward(20)
-	default:
-		drone.Forward(0)
-	}
 }
 
 func dist(x1, y1, x2, y2 float64) float64 {
@@ -339,3 +337,31 @@ func getRightStick() pair {
 	s.y = rightY.Load().(float64)
 	return s
 }
+
+func setSteering(steering float64) {
+	steeringVal := getSteeringPulse(steering)
+	pca9685.SetPWM(1, 0, uint16(steeringVal))
+	fmt.Printf("setSteering to %v", steering)
+}
+
+func setThrottle(throttle float64) {
+	throttleVal := getThrottlePulse(throttle)
+	pca9685.SetPWM(0, 0, uint16(throttleVal))
+	fmt.Printf("setThrottle to %v", throttle)
+}
+
+// adjusts the steering from -1.0 (hard left) <-> 1.0 (hardright) to the correct
+// pwm pulse values.
+func getSteeringPulse(val float64) float64 {
+	return gobot.Rescale(val, -1, 1, 290, 490)
+}
+
+// adjusts the throttle from -1.0 (hard back) <-> 1.0 (hard forward) to the correct
+// pwm pulse values.
+func getThrottlePulse(val float64) int {
+	if val > 0 {
+		return int(gobot.Rescale(val, 0, 1, 350, 300))
+	}
+	return int(gobot.Rescale(val, -1, 0, 490, 350))
+}
+
