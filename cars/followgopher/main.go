@@ -226,7 +226,8 @@ func setSteering(steering float64) {
 }
 
 func setThrottle(throttle float64) {
-	throttleVal := getThrottlePulse(throttle)
+	// throttleVal := getThrottlePulse(throttle)
+	throttleVal := getThrottlePulseSlow()
 	pca9685.SetPWM(0, 0, uint16(throttleVal))
 	// fmt.Printf("setThrottle to %v\n", throttle)
 }
@@ -245,6 +246,10 @@ func getThrottlePulse(val float64) int {
 		return int(gobot.Rescale(val, 0, 1, 350, 300))
 	}
 	return int(gobot.Rescale(val, -1, 0, 490, 350))
+}
+
+func getThrottlePulseSlow() int {
+	return int(360) // 380
 }
 
 func mjpegCapture(webcam *gocv.VideoCapture, stream *mjpeg.Stream) {
