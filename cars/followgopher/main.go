@@ -173,7 +173,7 @@ func trackFace(frame gocv.Mat) {
 	//	setThrottle(-0.25)
 	//}
 
-	setThrottle(-0.1)
+	setThrottle(-0.1590014343699454)
 
 	if !detected {
 		return
@@ -226,8 +226,8 @@ func setSteering(steering float64) {
 }
 
 func setThrottle(throttle float64) {
-	// throttleVal := getThrottlePulse(throttle)
-	throttleVal := getThrottlePulseSlow()
+	throttleVal := getThrottlePulse(throttle)
+	// throttleVal := getThrottlePulseSlow()
 	pca9685.SetPWM(0, 0, uint16(throttleVal))
 	// fmt.Printf("setThrottle to %v\n", throttle)
 }
@@ -249,6 +249,7 @@ func getThrottlePulse(val float64) int {
 }
 
 func getThrottlePulseSlow() int {
+	// -0.1590014343699454
 	return int(420) // 380
 }
 
