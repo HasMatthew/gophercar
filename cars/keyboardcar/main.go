@@ -119,13 +119,13 @@ func handleAccel() {
 func setSteering(steering float64) {
 	steeringVal := getSteeringPulse(steering)
 	pca9685.SetPWM(1, 0, uint16(steeringVal))
-	fmt.Printf("\r setSteering to %v", steering)
+	fmt.Printf("setSteering to %v\n", steering)
 }
 
 func setThrottle(throttle float64) {
 	throttleVal := getThrottlePulse(throttle)
 	pca9685.SetPWM(0, 0, uint16(throttleVal))
-	fmt.Printf("\r setThrottle to %v", throttle)
+	fmt.Printf("setThrottle to %v\n", throttle)
 }
 
 // adjusts the steering from -1.0 (hard left) <-> 1.0 (hardright) to the correct
