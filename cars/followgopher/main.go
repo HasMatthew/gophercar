@@ -85,6 +85,7 @@ func main() {
 	robot.Start()
 
 	// open webcam
+	fmt.Printf("OpenVideoCapture()")
 	webcam, err := gocv.OpenVideoCapture(deviceID)
 	if err != nil {
 		fmt.Printf("Error opening capture device: %v\n", 0)
@@ -98,9 +99,11 @@ func main() {
 	defer img.Close()
 
 	// load classifier to recognize faces
+	fmt.Printf("NewCascadeClassifier()")
 	classifier = gocv.NewCascadeClassifier()
 	defer classifier.Close()
 
+	fmt.Printf("CascadeClassifier.Load()")
 	if !classifier.Load(xmlFile) {
 		fmt.Printf("Error reading cascade file: %v\n", xmlFile)
 		return
