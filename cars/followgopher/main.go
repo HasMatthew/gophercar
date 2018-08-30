@@ -93,7 +93,7 @@ func main() {
 	}
 	defer webcam.Close()
 
-	go serveStream(webcam)
+	// go serveStream(webcam)
 
 	img := gocv.NewMat()
 	defer img.Close()
