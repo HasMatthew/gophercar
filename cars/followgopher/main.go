@@ -163,11 +163,12 @@ func trackFace(frame gocv.Mat) {
 	left = maxRect.left
 	right = maxRect.right
 
-	if !detected {
-		setThrottle(350)
-	} else {
-		setThrottle(-0.25)
-	}
+
+	//if !detected {
+	//	setThrottle(0)
+	//} else {
+	//	setThrottle(-0.25)
+	//}
 
 	if !detected {
 		return
@@ -210,14 +211,15 @@ func getRightStick() pair {
 func setSteering(steering float64) {
 	steeringVal := getSteeringPulse(steering)
 	pca9685.SetPWM(1, 0, uint16(steeringVal))
-	fmt.Printf("setSteering to %v", steering)
+	fmt.Printf("setSteering to %v\n", steering)
 }
 
 func setThrottle(throttle float64) {
 	throttleVal := getThrottlePulse(throttle)
 	pca9685.SetPWM(0, 0, uint16(throttleVal))
-	fmt.Printf("setThrottle to %v", throttle)
+	fmt.Printf("setThrottle to %v\n", throttle)
 }
+
 
 // adjusts the steering from -1.0 (hard left) <-> 1.0 (hardright) to the correct
 // pwm pulse values.
