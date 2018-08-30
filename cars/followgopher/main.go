@@ -162,6 +162,7 @@ func trackFace(frame gocv.Mat) {
 
 	left = maxRect.left
 	right = maxRect.right
+	center := (right - left) / 2.0
 
 
 	//if !detected {
@@ -177,14 +178,14 @@ func trackFace(frame gocv.Mat) {
 	}
 
 	// Turn the car steering left or right based on whether the face image is to the left or right of center
-	switch {
-	case right < W/2:
-		setSteering(1.0) // TODO: use an offset based on the current steering
-	case left > W/2:
-		setSteering(-1.0) // TODO: use an offset based on the current steering
-	default:
-		setSteering(0.0)
+	
+	if center < W/2 {
+		setSteering(1.0)
+
+	} else {
+		setSteering(-1.0)
 	}
+
 
 }
 
