@@ -154,14 +154,16 @@ func trackFace(frame gocv.Mat) {
 		s := rect.Size().X * rect.Size().Y
 		gocv.Rectangle(&frame, rect, green, 3)
 		if s > maxRect.area {
+			fmt.Printf("s > maxRect.area")
 			maxRect.area = s
 			maxRect.left = left
 			maxRect.right = right
 		}
 	}
 
-	left = maxRect.left
-	right = maxRect.right
+	//left = maxRect.left
+	//right = maxRect.right
+
 	center := (right - left) / 2.0
 
 
