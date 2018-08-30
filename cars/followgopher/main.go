@@ -82,7 +82,7 @@ func main() {
 		[]gobot.Device{pca9685, oled, mpu6050},
 	)
 
-	robot.Start()
+	go robot.Start()
 
 	// open webcam
 	fmt.Printf("OpenVideoCapture()")
